@@ -1,0 +1,74 @@
+---
+title: "Data Investigation"
+output: html_document
+---
+
+
+```{r}
+library(tidyverse)
+```
+
+
+## Data Loading
+
+Load data from CSV (over 3 GBs of files)
+```{r}
+donations <- read_csv("data/Donations.csv")
+donors <- read_csv("data/Donors.csv")
+projects <- read_csv("data/Projects.csv")
+resources <- read_csv("data/Resources.csv")
+schools <- read_csv("data/Schools.csv")
+teachers <- read_csv("data/Teachers.csv")
+```
+
+## Data investigation
+
+#### Donations
+Look into donations: 
+Has a bunch of FKs, "Donation Included Optional Donation" which should be a logical, donation amount (in usd?), "Donor Cart Sequence" which is the nth checked out cart for that donor
+```{r}
+head(donations, n = 25)
+```
+
+Most donations include optional donation. Amounts can be 0 or NA? Not sure what that means. Most donors are in their first few carts but someone has checked out 18000 times? That seems weird. Very large donations but seems reasonable.
+```{r}
+summary(donations %>% mutate(`Donation Included Optional Donation` = as.factor(`Donation Included Optional Donation`)))
+```
+
+#### Donors
+
+Contains basic info on donors location and whether they are a teacher. This would be far more valuable if we could get some data with more demographic data by location. Could see impact of income on donations. Are these only whether they are teachers in their system or if they are teachers at all?
+```{r}
+head(donors, n=30)
+```
+
+More people are not teachers than are. Lots of people missing zip code.
+```{r}
+summary(donors %>% mutate(`Donor Is Teacher` = as.factor(`Donor Is Teacher`), `Donor Zip` = as.factor(`Donor Zip`),))
+```
+
+More people missing city than zip code which seems weird. 
+```{r}
+sapply(donors, function(x) sum(is.na(x)))
+```
+
+Seem to actually have valid zip codes so could probably use data to create a city to zipcode map and fill in missing cities
+```{r}
+donors %>% filter(is.na(`Donor City`), !is.na(`Donor Zip`)) %>% head()
+```
+
+#### Projects
+Gives a list of donation campaigns with info about them. "Teacher Project Posted Sequence" indicates the nth project for that teacher. Project type is a category with few bins. Project Essay is where most of the size comes from. Could do some nlp on these. Has more project info like funding status and categories. Seems to have some data cleanliness issues. Project cost $ prefixed so should remove.
+```{r}
+head(projects, n=30)
+```
+
+```{r}
+summary(projects )
+```
+
+Lots missing fully funded data (makes sense). Other missing data may be a csv formatting issue.
+```{r}
+sapply(projects, function(x) sum(is.na(x)))
+```
+
