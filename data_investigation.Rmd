@@ -8,6 +8,16 @@ output: html_document
 library(tidyverse)
 ```
 
+## Problem Statement
+DonorsChoose.org has funded over 1.1 million classroom requests through the support of 3 million donors, the majority of whom were making their first-ever donation to a public school. If DonorsChoose.org can motivate even a fraction of those donors to make another donation, that could have a huge impact on the number of classroom requests fulfilled.
+
+A good solution will enable DonorsChoose.org to build targeted email campaigns recommending specific classroom requests to prior donors. Part of the challenge is to assess the needs of the organization, uncover insights from the data available, and build the right solution for this problem. Submissions will be evaluated on the following criteria:
+
+Performance - How well does the solution match donors to project requests to which they would be motivated to donate? DonorsChoose.org will not be able to live test every submission, so a strong entry will clearly articulate why it will be effective at motivating repeat donations.
+
+Adaptable - The DonorsChoose.org team wants to put the winning submissions to work, quickly. Therefore a good entry will be easy to implement in production.
+
+Intelligible - A good entry should be easily understood by the DonorsChoose.org team should it need to be updated in the future to accommodate a changing marketplace.
 
 ## Data Loading
 
@@ -22,7 +32,7 @@ teachers <- read_csv("data/Teachers.csv")
 ```
 
 ## Data investigation
-
+Look at the data to see what the values are and what is missing.
 #### Donations
 Look into donations: 
 Has a bunch of FKs, "Donation Included Optional Donation" which should be a logical, donation amount (in usd?), "Donor Cart Sequence" which is the nth checked out cart for that donor
@@ -30,7 +40,7 @@ Has a bunch of FKs, "Donation Included Optional Donation" which should be a logi
 head(donations, n = 25)
 ```
 
-Most donations include optional donation. Amounts can be 0 or NA? Not sure what that means. Most donors are in their first few carts but someone has checked out 18000 times? That seems weird. Very large donations but seems reasonable.
+Most donations include optional donation (On their website it indicates that this is an optional extra donation which people can make, to support the operation of DonorsChoose, rather than the project itself). Amounts can be 0 or NA? Not sure what that means. Most donors are in their first few carts but someone has checked out 18000 times? That seems weird. Very large donations but seems reasonable.
 ```{r}
 summary(donations %>% mutate(`Donation Included Optional Donation` = as.factor(`Donation Included Optional Donation`)))
 ```
@@ -44,7 +54,7 @@ head(donors, n=30)
 
 More people are not teachers than are. Lots of people missing zip code.
 ```{r}
-summary(donors %>% mutate(`Donor Is Teacher` = as.factor(`Donor Is Teacher`), `Donor Zip` = as.factor(`Donor Zip`),))
+summary(donors %>% mutate(`Donor Is Teacher` = as.factor(`Donor Is Teacher`), `Donor Zip` = as.factor(`Donor Zip`)))
 ```
 
 More people missing city than zip code which seems weird. 
@@ -58,7 +68,7 @@ donors %>% filter(is.na(`Donor City`), !is.na(`Donor Zip`)) %>% head()
 ```
 
 #### Projects
-Gives a list of donation campaigns with info about them. "Teacher Project Posted Sequence" indicates the nth project for that teacher. Project type is a category with few bins. Project Essay is where most of the size comes from. Could do some nlp on these. Has more project info like funding status and categories. Seems to have some data cleanliness issues. Project cost $ prefixed so should remove.
+Gives a list of donation campaigns with info about them. "Teacher Project Posted Sequence" indicates the nth project for that teacher. Project type is a category with few bins. Project Essay is where most of the size comes from. Could do some nlp on these. Has more project info like funding status and categories. Seems to have some data cleanliness issues. Project cost $ prefixed so should remove. "Archived" means the project was removed from the site by a staff member or by the teacher. Please ignore these for now- we are updating the data soon to get rid of these projects from the competition dataset.
 ```{r}
 head(projects, n=30)
 ```
@@ -71,4 +81,90 @@ Lots missing fully funded data (makes sense). Other missing data may be a csv fo
 ```{r}
 sapply(projects, function(x) sum(is.na(x)))
 ```
+
+#### Resources
+For every project in the above dataset, there are one or more resources that is requested. Has a text resource name, number, price and vendor. Not sure if these make up the whole cost of a project but most are pretty cheap so probably not? Each project does seem to have a lot of them though.
+```{r}
+head(resources, n=30)
+```
+
+Resource quantity and price sometimes missing. Some prices and quantities are zero which is weird.
+```{r}
+summary(resources)
+```
+
+#### Schools
+
+Lots of info on school like whether they have a high percentage of free lunch students (potential economic indicator), location (do donors donate more / more often when they are closer), 
+```{r}
+head(schools, n=30)
+```
+
+School lunch percentage looks ok, most schools in and around cities.
+```{r}
+summary(schools %>% mutate(`School Metro Type` = as.factor(`School Metro Type`)))
+```
+
+#### Teachers
+just gives an optional gender (prefix) and start date. More experienced users might get more funded projects. 
+```{r}
+head(teachers, n=30)
+```
+
+## Data Transformation and Cleaning
+
+Apply some basic data cleaning and formatting
+
+Fix all the column names
+```{r}
+colnames(donations) <- make.names(colnames(donations))
+colnames(donors) <- make.names(colnames(donors))
+colnames(projects) <- make.names(colnames(projects))
+colnames(resources) <- make.names(colnames(resources))
+colnames(schools) <- make.names(colnames(schools))
+colnames(teachers) <- make.names(colnames(teachers))
+```
+
+Format data correctly
+```{r}
+donations <- donations %>%
+  mutate(Donation.Included.Optional.Donation = Donation.Included.Optional.Donation == 'Yes')
+
+donors <- donors %>%
+  mutate(Donor.Is.Teacher = Donor.Is.Teacher == 'Yes',
+         Donor.City = as.factor(Donor.City),
+         Donor.State = as.factor(Donor.State),
+         Donor.Zip = as.factor(Donor.Zip))
+
+projects <- projects %>% 
+  mutate(Project.Type = as.factor(Project.Type),
+         Project.Subject.Category.Tree = as.factor(Project.Subject.Category.Tree),
+         Project.Subject.Subcategory.Tree = as.factor(Project.Subject.Subcategory.Tree),
+         Project.Grade.Level.Category = as.factor(Project.Grade.Level.Category),
+         Project.Resource.Category = as.factor(Project.Resource.Category),
+         Project.Current.Status = as.factor(Project.Current.Status))
+
+resources <- resources %>% 
+  mutate(Resource.Vendor.Name = as.factor(Resource.Vendor.Name))
+
+schools <- schools %>% 
+  mutate(School.Metro.Type = as.factor(School.Metro.Type),
+         School.State = as.factor(School.State),
+         School.Zip = as.factor(School.Zip),
+         School.City = as.factor(School.City),
+         School.County = as.factor(School.County))
+
+teachers <- teachers %>% 
+  mutate(Teacher.Prefix = as.factor(Teacher.Prefix))
+```
+
+Fill in missing data where applicable
+```{r}
+donors %>% group_by(Donor.Zip) %>%
+  mutate(most_common_city = Donor.City %>% table %>% which.max %>% names)
+
+```
+
+
+
 
