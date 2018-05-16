@@ -19,6 +19,19 @@ Adaptable - The DonorsChoose.org team wants to put the winning submissions to wo
 
 Intelligible - A good entry should be easily understood by the DonorsChoose.org team should it need to be updated in the future to accommodate a changing marketplace.
 
+## Website investigation
+
+* Search for topics, teachers and schools near a particular location
+* Certain projects are highlighted as urgent. 
+* Can see amount left to fund projects, number of donors, goal amount
+* Expires date is there but not obvious
+* Has a profile of teacher with name and picture
+* Projects only go through if they become fully funded
+* Can see dollar break down of where your money would go. 
+* Goal amount includes the suggested donation to help donors choose reach more classrooms
+* Ripple sometimes matches donations
+* Highlights when donations are matched
+
 ## Data Loading
 
 Load data from CSV (over 3 GBs of files)
@@ -44,6 +57,13 @@ Most donations include optional donation (On their website it indicates that thi
 ```{r}
 summary(donations %>% mutate(`Donation Included Optional Donation` = as.factor(`Donation Included Optional Donation`)))
 ```
+
+5 donors with more that 5000 carts. Note that these skew the mean cart because every intermediate cart is counted as well.
+```{r}
+donations %>% filter(Donor.Cart.Sequence > 5000) %>% group_by(Donor.ID) %>% count()
+```
+
+
 
 #### Donors
 
@@ -165,6 +185,68 @@ donors %>% group_by(Donor.Zip) %>%
 
 ```
 
+## Data Visualization
 
+### Donations
 
+Very spiky distribution, clearly some amounts like 10, 25, 50, 100 that peopl donate far more than others. Would be useful to bin these. 
+```{r}
+donations %>% ggplot(aes(x=Donation.Amount)) + geom_density() + scale_x_log10()
+```
 
+I hypothesize that people who give multiple times are more willing to give less on subsequent donations. Graph is hard to read but seems to show that.
+```{r}
+donations %>% ggplot(aes(x=Donation.Amount, fill=Donor.Cart.Sequence > 1)) + geom_density(alpha=0.4) + scale_x_log10()
+```
+
+Exponential looking drop off with long tail
+```{r}
+donations %>% filter(Donor.Cart.Sequence < 100) %>% ggplot(aes(x=Donor.Cart.Sequence)) + geom_histogram(binwidth = 1) 
+```
+
+Vast majority of donors only donate once and very few donate more than ten times. 
+```{r}
+donations %>% filter(Donor.Cart.Sequence < 100) %>%
+  group_by(Donor.ID) %>% 
+  summarise(Donor.Cart.Sequence = max(Donor.Cart.Sequence)) %>% 
+  ggplot(aes(x=Donor.Cart.Sequence)) + geom_histogram(binwidth = 1) 
+```
+
+General down trend in median as donor cart increases. Increase at first though.
+```{r}
+donations %>% filter(Donor.Cart.Sequence < 100) %>%
+  ggplot(aes(x=Donor.Cart.Sequence, y=Donation.Amount)) +  stat_summary(fun.y=median, geom="line",lwd=2,aes(group=1))
+```
+
+#### Projects
+
+Looks like there are a few most common funding targets. Cheaper projects are more likely to get fully funded. Wonder how much projects that are unfunded get on average. 
+```{r}
+projects %>% 
+  filter(Project.Current.Status != "Live") %>% 
+  ggplot(aes(x=Project.Cost, fill=Project.Current.Status)) + geom_density(alpha=0.5) + scale_x_log10()
+```
+
+Hard to read labels and should fix that but does appear to be some variation in the funding rate for different categories
+```{r}
+projects %>% 
+  filter(Project.Current.Status != "Live") %>%
+  ggplot(aes(x=Project.Resource.Category, fill=Project.Current.Status)) + geom_bar(position = "fill")
+  
+```
+
+Does not appear to be much variation based on grade level. Unknown is less which makes sense.
+```{r}
+projects %>% 
+  filter(Project.Current.Status != "Live") %>%
+  ggplot(aes(x=Project.Grade.Level.Category, fill=Project.Current.Status)) + geom_bar(position = "fill")
+```
+
+These seem to need to be split on commas as lots have two. The most common are single subjects.
+```{r}
+projects %>% group_by(Project.Subject.Category.Tree) %>%  count() %>% arrange(desc(n))
+
+projects %>% 
+  filter(Project.Current.Status != "Live") %>%
+  ggplot(aes(x=Project.Subject.Category.Tree, fill=Project.Current.Status)) + geom_bar(position = "fill")
+```
