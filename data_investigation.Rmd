@@ -227,11 +227,12 @@ projects %>%
   ggplot(aes(x=Project.Cost, fill=Project.Current.Status)) + geom_density(alpha=0.5) + scale_x_log10()
 ```
 
-Hard to read labels and should fix that but does appear to be some variation in the funding rate for different categories
+Does appear to be some variation in the funding rate for different categories.
 ```{r}
 projects %>% 
   filter(Project.Current.Status != "Live") %>%
-  ggplot(aes(x=Project.Resource.Category, fill=Project.Current.Status)) + geom_bar(position = "fill")
+  ggplot(aes(x=Project.Resource.Category, fill=Project.Current.Status)) + geom_bar(position = "fill") + 
+  theme(axis.text.x = element_text(angle = -90))
   
 ```
 
@@ -242,7 +243,7 @@ projects %>%
   ggplot(aes(x=Project.Grade.Level.Category, fill=Project.Current.Status)) + geom_bar(position = "fill")
 ```
 
-These seem to need to be split on commas as lots have two. The most common are single subjects.
+These seem to need to be split on commas as lots have two. Should probably one hot encode these. The most common are single subjects.
 ```{r}
 projects %>% group_by(Project.Subject.Category.Tree) %>%  count() %>% arrange(desc(n))
 
@@ -250,3 +251,49 @@ projects %>%
   filter(Project.Current.Status != "Live") %>%
   ggplot(aes(x=Project.Subject.Category.Tree, fill=Project.Current.Status)) + geom_bar(position = "fill")
 ```
+
+Definitely appears to be an overall increase in projects. Recent projects are less likely to be funded as not yet finished. Definitely some seasonal trends. Likely just more projects at start of school year.
+```{r}
+projects %>% ggplot(aes(x=Project.Posted.Date, fill=Project.Current.Status == "Fully Funded")) +  geom_density(alpha=0.5)
+```
+
+Most that are funded, get funding quite quickly with a general decrease until a hard cutoff. That may be the max amount of time allowed on the site.
+```{r}
+projects %>%
+  filter(Project.Current.Status == "Fully Funded", Project.Fully.Funded.Date > "2013-01-01") %>% 
+  mutate(days_to_completion = as.numeric(Project.Fully.Funded.Date - Project.Posted.Date)) %>% 
+  ggplot(aes(x=days_to_completion)) + geom_histogram(binwidth = 5, alpha=0.8)
+
+```
+
+#### Resources
+Most things are cheap and they don't order a lot. Some things are numerous and others are expensive but not both.
+```{r}
+resources %>% filter(Resource.Quantity > 0 )%>% ggplot(aes(x=Resource.Quantity, y=Resource.Unit.Price)) + geom_point()
+```
+
+Definitely some clear differences across resource vendors in terms of average price vs quantity. Would be interested how donors respond to single expensive items vs. many cheap items.
+```{r}
+resources %>% group_by(Resource.Vendor.Name) %>%
+  summarise(count=n(), avg_quantity=mean(Resource.Quantity), avg_price=mean(Resource.Unit.Price))
+```
+
+#### Schools
+
+Looks like school metro type has an effect on percentage free lunch but all groups exhibit the full range of possibilities.
+```{r}
+schools %>% ggplot(aes(x=School.Metro.Type, y=School.Percentage.Free.Lunch)) + geom_boxplot()
+```
+
+Overall more schools have high percentage of free lunch with a large spike at 95. Not many have 96-100.
+```{r}
+schools %>% ggplot(aes(x=School.Percentage.Free.Lunch)) + geom_histogram(binwidth = 1)
+```
+
+#### teachers
+Far more female than male teachers.Teacher appears to be the preferred gender neutral title.
+```{r}
+teachers %>% ggplot(aes(x=Teacher.Prefix)) + geom_bar()
+```
+
+
