@@ -31,6 +31,16 @@ Intelligible - A good entry should be easily understood by the DonorsChoose.org 
 * Goal amount includes the suggested donation to help donors choose reach more classrooms
 * Ripple sometimes matches donations
 * Highlights when donations are matched
+* Highlights "Nearly all students from low‑income households" on some projects (not sure on cutoff)
+* Mentions the number of students affected
+* Tags like special needs and Magnet school
+* Zip code given for credit card location
+* After confirming payment you can leave a message, personal photo, and select state
+* After this screen they prompt you to see if you want to support a classroom every month
+* They have selectable amounts at 10, 15,20,25,30,50,100,200 or other which creates a type in field
+* Prompted to share on facebook then final thank you screen
+* 'Your generous donation of $AMOUNT has been applied to this project and we told TEACHER the good news! We also emailed your tax-deductible receipt (ID #NUM) to EMAIL.""
+
 
 ## Data Loading
 
